@@ -1,0 +1,11 @@
+--- a/main/stasis.c
++++ b/main/stasis.c
+@@ -2418,7 +2418,7 @@
+         .category_match = ACO_WHITELIST_EXACT,
+ };
+ 
+-static struct aco_type *taskpool_options[] = ACO_TYPES(&threadpool_option, &taskpool_option);
++static struct aco_type *taskpool_options[] = ACO_TYPES(&taskpool_option);
+ 
+ /*! \brief An aco_type structure to link the "declined_message_types" category to the stasis_declined_config type */
+ static struct aco_type declined_option = {

@@ -1,0 +1,14 @@
+[Unit]
+Description=Asterisk PBX
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/asterisk -f
+ExecStop=/usr/sbin/asterisk -rx "core stop now"
+ExecReload=/usr/sbin/asterisk -rx "core reload"
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

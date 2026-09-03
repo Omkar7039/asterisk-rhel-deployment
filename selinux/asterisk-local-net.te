@@ -1,0 +1,9 @@
+module asterisk_local_net 1.0;
+
+require {
+    type asterisk_t;
+    type sysctl_net_t;
+    class dir search;
+}
+
+allow asterisk_t sysctl_net_t:dir search;
