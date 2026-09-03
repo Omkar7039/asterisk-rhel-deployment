@@ -2,794 +2,344 @@
 
 Reproducible Asterisk 22.10.1 deployment baseline for Red Hat Enterprise Linux.
 
-The project is designed to provide a clean, minimal Asterisk installation that can be:
+This project provides:
 
-* Installed on a fresh RHEL server from GitHub.
-* Used as a Master OVA.
-* Cloned and customized.
-* Verified automatically.
-* Extended later without rebuilding the architecture.
+- Asterisk 22.10.1 from source
+- PJSIP
+- UDP SIP transport
+- Minimal module loading
+- Minimal Echo test dialplan
+- SELinux Enforcing support
+- Local SELinux policy
+- Asterisk 22.10.1 Stasis source patch
+- systemd service
+- Automated installation
+- Automated verification
+- GitHub source-controlled configuration
+- Version-controlled deployment
+- Repeatable RHEL installation
 
 ---
 
-# 1. Architecture
+# 1. PROJECT GOAL
 
-The project uses two deployment methods.
+The purpose of this project is to create a clean, reproducible and validated Asterisk installation on Red Hat Enterprise Linux.
+
+The project is designed around GitHub as the single source of truth.
+
+Deployment flow:
 
 ```text
                          GitHub
-                           |
-                 +---------+---------+
-                 |                   |
-                 v                   v
-        Fresh RHEL Server       Master OVA
-                 |                   |
-                 v                   v
-          ./install.sh            Clone
-                 |                   |
-                 v                   v
-        Asterisk 22.10.1       Customize
-                 |                   |
-                 v                   v
-       systemd + SELinux         Deploy
-                 |
-                 v
-             verify.sh
-```
-
-GitHub is the reproducible source of truth.
-
-The OVA is the fast VM deployment method.
-
----
-
-# 2. Current Validated Master Baseline
-
-Current reference Master:
-
-```text
-OS:                    RHEL 9.8
-Architecture:          x86_64
-Asterisk:              22.10.1
-PJSIP:                 Enabled
-SIP Transport:         UDP
-SIP Bind:              0.0.0.0:5060
-SELinux:               Enforcing
-systemd:               asterisk.service
-Module autoload:       Disabled
-Echo extension:        600
-```
-
-Validated behavior:
-
-```text
-Asterisk starts automatically
-PJSIP loads
-UDP 5060 listens
-SELinux remains Enforcing
-No Asterisk startup ERROR
-No Asterisk startup WARNING
-No new Asterisk SELinux AVC
-Asterisk reaches "Asterisk Ready."
-```
-
----
-
-# 3. Project Structure
-
-The repository is intended to contain:
-
-```text
-asterisk-rhel-deployment/
-|
-├── README.md
-├── VERSION
-├── .gitignore
-|
-├── install.sh
-├── build.sh
-├── verify.sh
-├── cleanup.sh
-|
-├── configs/
-│   └── asterisk/
-│       ├── asterisk.conf
-│       ├── modules.conf
-│       ├── pjsip.conf
-│       ├── extensions.conf
-│       ├── logger.conf
-│       ├── stasis.conf
-│       └── required core configuration files
-|
-├── patches/
-│   └── asterisk-22.10.1-stasis-taskpool.patch
-|
-├── packages/
-│   ├── common.sh
-│   ├── rhel8.sh
-│   └── rhel9.sh
-|
-├── selinux/
-│   └── asterisk-local-net.te
-|
-├── systemd/
-│   └── asterisk.service
-|
-└── docs/
-```
-
----
+                            |
+                            v
+                     Fresh RHEL Server
+                            |
+                            v
+                     ./install.sh
+                            |
+                            v
+                    Asterisk 22.10.1
+                            |
+                            v
+                     ./verify.sh
+                            |
+                            v
+                    Working Asterisk
 
-# 4. Requirements
 
-The target machine must have:
 
-```text
-RHEL 8 or RHEL 9
-x86_64
-root or sudo access
-Internet access OR usable local package repositories
-Git
-GitHub access
-```
 
-RHEL repository access is required to install dependencies.
+2. GITHUB SOURCE OF TRUTH
 
-An unregistered RHEL system may not have access to all required Red Hat packages.
+GitHub is the authoritative source for this project.
 
----
+Repository:
 
-# 5. GitHub Authentication
+https://github.com/Omkar7039/asterisk-rhel-deployment.git
 
-A minimal RHEL server does NOT need a browser installed.
+GitHub stores:
 
-Use GitHub CLI device authentication.
+README.md
+VERSION
+configs/
+patches/
+selinux/
+systemd/
+install.sh
+verify.sh
+build.sh
+cleanup.sh
 
-Check:
+The server installation should be reproducible from the GitHub repository.
 
-```bash
-git --version
-gh --version
-```
+3. TARGET OPERATING SYSTEM
 
-Authenticate:
+Primary target platforms:
 
-```bash
-gh auth login
-```
+Red Hat Enterprise Linux 8
+Red Hat Enterprise Linux 9
 
-Select:
+Each major RHEL version must be tested separately.
 
-```text
-GitHub.com
-HTTPS
-Yes - Authenticate Git with your GitHub credentials
-Login with a web browser
-```
+The project should not claim support for an untested RHEL release.
 
-The server may display:
+4. REFERENCE ENVIRONMENT
 
-```text
-First copy your one-time code: XXXX-XXXX
-```
+Validated baseline:
 
-From another computer, open:
+Operating System : RHEL 9.8
+Architecture     : x86_64
+Hypervisor       : VMware
+Asterisk         : 22.10.1
+PJSIP            : Enabled
+SELinux          : Enforcing
+systemd          : Enabled
+SIP Transport    : UDP
+SIP Port         : 5060
+5. ASTERISK VERSION
 
-```text
-https://github.com/login/device
-```
+Current project baseline:
 
-Enter the temporary code.
+Asterisk 22.10.1
 
-Verify:
+Source directory:
 
-```bash
-gh auth status
-```
-
-Configure Git:
-
-```bash
-gh auth setup-git
-```
-
-Verify again:
-
-```bash
-gh auth status
-```
-
-Do not place GitHub tokens, passwords, or credentials inside this repository.
-
----
-
-# 6. Create a New GitHub Repository
-
-Example repository:
-
-```text
-asterisk-rhel-deployment
-```
-
-Create local project:
-
-```bash
-mkdir -p /opt/asterisk-rhel-deployment
-cd /opt/asterisk-rhel-deployment
-```
-
-Initialize Git:
-
-```bash
-git init
-git branch -M main
-```
-
-Create GitHub repository:
-
-```bash
-gh repo create asterisk-rhel-deployment \
-  --private \
-  --source=. \
-  --remote=origin
-```
-
-Check:
-
-```bash
-git remote -v
-```
-
-Expected:
-
-```text
-origin  https://github.com/YOUR_USERNAME/asterisk-rhel-deployment.git
-```
-
-The server does not need a graphical browser to perform the Git operations.
-
----
-
-# 7. Git Identity
-
-Configure the Git author.
-
-```bash
-git config --global user.name "YOUR NAME"
-git config --global user.email "YOUR_GITHUB_EMAIL"
-```
-
-Verify:
-
-```bash
-git config --global user.name
-git config --global user.email
-```
-
----
-
-# 8. Initial Git Workflow
-
-Check files:
-
-```bash
-git status
-```
-
-Stage files:
-
-```bash
-git add .
-```
-
-Review:
-
-```bash
-git status
-git diff --cached --stat
-git diff --cached --name-only
-```
-
-Create commit:
-
-```bash
-git commit -m "Add Asterisk 22.10.1 RHEL deployment baseline"
-```
-
-Push:
-
-```bash
-git push -u origin main
-```
-
-Verify:
-
-```bash
-git status
-```
-
-Expected:
-
-```text
-nothing to commit, working tree clean
-```
-
----
-
-# 9. Asterisk Source
-
-Asterisk is built from source rather than relying on a precompiled binary.
-
-Current source:
-
-```text
 /usr/src/asterisk-22.10.1
-```
 
 Installed binary:
 
-```text
 /usr/sbin/asterisk
-```
+6. ASTERISK SOURCE INSTALLATION
 
-Check version:
+Asterisk is compiled from source.
 
-```bash
-asterisk -rx "core show version"
-```
+Installation flow:
+
+Download source
+      |
+      v
+Verify checksum
+      |
+      v
+Install prerequisites
+      |
+      v
+Apply project patch
+      |
+      v
+Configure
+      |
+      v
+Compile
+      |
+      v
+Install
+7. SOURCE DIRECTORY
+
+The baseline source directory is:
+
+/usr/src/asterisk-22.10.1
+
+Check:
+
+ls -ld /usr/src/asterisk-22.10.1
+8. ASTERISK BINARY
+
+Installed executable:
+
+/usr/sbin/asterisk
+
+Check:
+
+/usr/sbin/asterisk --version
 
 Expected:
 
-```text
 Asterisk 22.10.1
-```
+9. PJSIP SUPPORT
 
-The destination server should compile Asterisk locally.
+The project uses PJSIP.
 
-Do not rely on copying the RHEL 9 compiled binary to RHEL 8.
+Important modules include:
 
----
+res_pjsip.so
+res_pjsip_authenticator_digest.so
+res_pjsip_endpoint_identifier_anonymous.so
+res_pjsip_endpoint_identifier_ip.so
+res_pjsip_endpoint_identifier_user.so
+res_pjsip_pubsub.so
+res_pjsip_session.so
+chan_pjsip.so
+10. SIP TRANSPORT
 
-# 10. Source Patch
+Baseline SIP transport:
 
-The current Asterisk 22.10.1 baseline contains one local Stasis source correction.
-
-Patch:
-
-```text
-patches/asterisk-22.10.1-stasis-taskpool.patch
-```
-
-Change:
-
-```c
-static struct aco_type *taskpool_options[] =
-        ACO_TYPES(&threadpool_option, &taskpool_option);
-```
-
-to:
-
-```c
-static struct aco_type *taskpool_options[] =
-        ACO_TYPES(&taskpool_option);
-```
-
-This patch is version-specific.
-
-The installer must:
-
-1. Confirm the source version is 22.10.1.
-2. Confirm the expected original line exists.
-3. Apply the patch once.
-4. Fail if the expected source does not match.
-
-Never blindly patch an unrelated Asterisk version.
-
----
-
-# 11. Building Asterisk
-
-Manual build flow:
-
-```bash
-cd /usr/src/asterisk-22.10.1
-```
-
-Install source prerequisites using the selected RHEL dependency script.
-
-Then configure:
-
-```bash
-./configure
-```
-
-Build:
-
-```bash
-make -j"$(nproc)"
-```
-
-Install:
-
-```bash
-make install
-```
-
-Update libraries:
-
-```bash
-ldconfig
-```
-
-Verify:
-
-```bash
-asterisk -rx "core show version"
-```
-
-The future `build.sh` script will automate these steps.
-
----
-
-# 12. Asterisk Configuration
-
-Active configuration directory:
-
-```text
-/etc/asterisk
-```
-
-Important files:
-
-```text
-asterisk.conf
-modules.conf
-pjsip.conf
-extensions.conf
-logger.conf
-stasis.conf
-```
-
-Required core configuration files are also included where Asterisk expects them.
-
-Configuration must come from the matching Asterisk version.
-
-Do not mix configuration files from unrelated Asterisk releases.
-
----
-
-# 13. Asterisk Main Configuration
-
-Current directories:
-
-```text
-astetcdir      /etc/asterisk
-astmoddir      /usr/lib/asterisk/modules
-astvarlibdir   /var/lib/asterisk
-astdbdir       /var/lib/asterisk
-astrundir      /var/run/asterisk
-astlogdir      /var/log/asterisk
-astsbindir     /usr/sbin
-```
-
-Verify:
-
-```bash
-cat /etc/asterisk/asterisk.conf
-```
-
----
-
-# 14. Module Loading
-
-The Master uses:
-
-```ini
-[modules]
-autoload=no
-```
-
-This prevents unnecessary automatic loading.
-
-The baseline explicitly loads required modules for:
-
-```text
-PBX
-PJSIP
-RTP
-basic codecs
-Echo
-```
-
-It explicitly disables:
-
-```text
-chan_unistim.so
-res_stun_monitor.so
-```
-
-Verify:
-
-```bash
-cat /etc/asterisk/modules.conf
-```
-
-Check loaded modules:
-
-```bash
-asterisk -rx "module show"
-```
-
-Check PJSIP:
-
-```bash
-asterisk -rx "module show like pjsip"
-```
-
----
-
-# 15. PJSIP
-
-Current transport:
-
-```ini
 [transport-udp]
 type=transport
 protocol=udp
 bind=0.0.0.0:5060
-```
 
-Verify:
+Default:
 
-```bash
-asterisk -rx "pjsip show transports"
-```
+UDP 5060
+11. PJSIP CONFIGURATION
 
-Expected:
+Main configuration:
 
-```text
-transport-udp    udp    0.0.0.0:5060
-```
+/etc/asterisk/pjsip.conf
 
-Verify operating-system port:
+Baseline:
 
-```bash
-ss -lunp | grep ':5060'
-```
+[transport-udp]
+type=transport
+protocol=udp
+bind=0.0.0.0:5060
 
-Expected:
+The installer can ask for a different bind address and UDP port.
 
-```text
-0.0.0.0:5060
-```
+12. EXTENSIONS CONFIGURATION
 
-The Master does not contain customer SIP endpoints or trunks.
+Main dialplan:
 
-Those are added during customization.
+/etc/asterisk/extensions.conf
 
----
+The baseline provides:
 
-# 16. Dialplan
+600
 
-Current Master includes a simple Echo test.
+for the Echo test.
 
-```ini
-[general]
-static=yes
-writeprotect=no
-autofallthrough=yes
+13. ECHO TEST
+
+Baseline:
 
 [default]
 exten => 600,1,Answer()
  same => n,Echo()
  same => n,Hangup()
-```
 
-Extension:
+Calling extension 600 should answer and return the caller's audio.
 
-```text
-600
-```
+14. MODULE LOADING
 
-Purpose:
+The project uses explicit module loading.
 
-```text
-PJSIP registration/call testing
-Dialplan testing
-RTP/audio testing
-```
+Main file:
 
-Verify:
+/etc/asterisk/modules.conf
 
-```bash
-asterisk -rx "dialplan show 600@default"
-```
+Required components are loaded explicitly.
 
----
+Known unused modules are explicitly disabled where required.
 
-# 17. Stasis
+15. CODECS
 
-The final baseline uses an empty:
+Baseline codecs:
 
-```text
-/etc/asterisk/stasis.conf
-```
+codec_alaw.so
+codec_ulaw.so
+codec_g722.so
+16. RTP
 
-The file exists but contains no custom taskpool settings.
+Baseline RTP module:
 
-The Asterisk source patch fixes the problematic configuration registration.
+res_rtp_asterisk.so
 
-Do not add arbitrary taskpool options to this file.
+RTP is required for SIP media.
 
-Verify:
+17. ASTERISK DIRECTORY LAYOUT
 
-```bash
-ls -l /etc/asterisk/stasis.conf
-```
+Main directories:
 
----
+/etc/asterisk
+/usr/lib/asterisk/modules
+/var/lib/asterisk
+/var/run/asterisk
+/var/log/asterisk
+/usr/sbin
+18. ASTERISK.CONF
 
-# 18. Logging
+Baseline:
 
-Current logging configuration:
+[directories]
+astetcdir => /etc/asterisk
+astmoddir => /usr/lib/asterisk/modules
+astvarlibdir => /var/lib/asterisk
+astdbdir => /var/lib/asterisk
+astrundir => /var/run/asterisk
+astlogdir => /var/log/asterisk
+astsbindir => /usr/sbin
 
-```text
+[options]
+19. LOGGER CONFIGURATION
+
+Main file:
+
 /etc/asterisk/logger.conf
-```
 
-Verify:
+Baseline:
 
-```bash
-cat /etc/asterisk/logger.conf
-```
+[general]
 
-Check startup:
+[logfiles]
+console => notice,warning,error
+messages => notice,warning,error
+20. SYSTEMD SERVICE
 
-```bash
-journalctl -u asterisk -b --no-pager
-```
+Service file:
 
----
-
-# 19. systemd
-
-Service:
-
-```text
 /etc/systemd/system/asterisk.service
-```
 
-Current service runs Asterisk in the foreground:
+Asterisk is started in foreground mode:
 
-```text
+/usr/sbin/asterisk -f
+21. SYSTEMD SERVICE TYPE
+
+The service uses:
+
 Type=simple
-ExecStart=/usr/sbin/asterisk -f
-```
 
-This is intentional.
+This lets systemd directly manage the Asterisk process.
 
-Check:
+22. SYSTEMD ENABLEMENT
 
-```bash
-systemctl status asterisk --no-pager -l
-```
+Enable at boot:
 
-Enable:
-
-```bash
 systemctl enable asterisk
-```
-
-Start:
-
-```bash
-systemctl start asterisk
-```
-
-Restart:
-
-```bash
-systemctl restart asterisk
-```
-
-Stop:
-
-```bash
-systemctl stop asterisk
-```
 
 Verify:
 
-```bash
 systemctl is-enabled asterisk
-systemctl is-active asterisk
-```
 
 Expected:
 
-```text
 enabled
-active
-```
+23. ASTERISK SERVICE STATUS
 
----
+Check:
 
-# 20. SELinux
+systemctl status asterisk
 
-SELinux must remain:
+Expected:
 
-```text
-Enforcing
-```
+active (running)
+24. SELINUX
 
-Verify:
+The baseline keeps:
 
-```bash
-getenforce
-```
+SELinux Enforcing
 
-Do NOT disable SELinux.
+The project does not require disabling SELinux.
 
-Do not use:
+25. SELINUX LOCAL POLICY
 
-```bash
-setenforce 0
-```
+Repository file:
 
-as a permanent solution.
-
----
-
-# 21. Asterisk SELinux File Contexts
-
-Required directories:
-
-```text
-/var/lib/asterisk
-/var/log/asterisk
-/var/spool/asterisk
-```
-
-Expected types:
-
-```text
-asterisk_var_lib_t
-asterisk_log_t
-asterisk_spool_t
-```
-
-Restore contexts:
-
-```bash
-restorecon -RFv /etc/asterisk
-restorecon -RFv /var/lib/asterisk
-restorecon -RFv /var/log/asterisk
-restorecon -RFv /var/spool/asterisk
-```
-
-Verify:
-
-```bash
-ls -Zd /var/lib/asterisk
-ls -Zd /var/log/asterisk
-ls -Zd /var/spool/asterisk
-```
-
----
-
-# 22. Local SELinux Policy
-
-The Master requires one small local SELinux rule.
-
-Source:
-
-```text
 selinux/asterisk-local-net.te
-```
 
-Contents:
+Policy:
 
-```te
 module asterisk_local_net 1.0;
 
 require {
@@ -799,1061 +349,626 @@ require {
 }
 
 allow asterisk_t sysctl_net_t:dir search;
-```
 
-Purpose:
+This permits the required network sysctl directory search.
 
-```text
-asterisk_t
-    |
-    +---- search
-             |
-             v
-       sysctl_net_t
-```
+26. SELINUX POLICY BUILD
 
-This allows the specific operation required by Asterisk's network Entity ID detection.
+Compile:
 
-It does not disable SELinux.
+checkmodule -M -m -o asterisk-local-net.mod selinux/asterisk-local-net.te
 
----
+Package:
 
-# 23. Compile SELinux Module
-
-Required commands:
-
-```bash
-checkmodule -M -m \
-  -o asterisk_local_net.mod \
-  selinux/asterisk-local-net.te
-```
-
-Create package:
-
-```bash
-semodule_package \
-  -o asterisk_local_net.pp \
-  -m asterisk_local_net.mod
-```
+semodule_package -o asterisk-local-net.pp -m asterisk-local-net.mod
 
 Install:
 
-```bash
-semodule -i asterisk_local_net.pp
-```
+semodule -i asterisk-local-net.pp
+27. SELINUX VERIFICATION
 
 Verify:
 
-```bash
-semodule -l | grep -i asterisk
-```
+sesearch -A -s asterisk_t -t sysctl_net_t -c dir -p search
 
-The local module should appear as:
+Check AVC messages:
 
-```text
-asterisk_local_net
-```
+ausearch -m AVC -ts recent
 
-Verify policy:
+28. STASIS PATCH
 
-```bash
-sesearch -A \
-  -s asterisk_t \
-  -t sysctl_net_t \
-  -c dir \
-  -p search
-```
+Asterisk 22.10.1 requires the project Stasis taskpool source change.
 
-Expected:
+Original:
 
-```text
-allow asterisk_t sysctl_net_t:dir search;
-```
+static struct aco_type *taskpool_options[] = ACO_TYPES(&threadpool_option, &taskpool_option);
 
----
+Project baseline:
 
-# 24. SELinux AVC Verification
+static struct aco_type *taskpool_options[] = ACO_TYPES(&taskpool_option);
 
-Check recent AVCs:
+This resolves the configuration problem:
 
-```bash
-ausearch -m AVC -ts recent -c asterisk -i
-```
+Could not find option 'minimum_size' with type 'threadpool' in module 'stasis'
+29. STASIS PATCH FILE
 
-Check specifically:
+Patch:
 
-```bash
-ausearch -m AVC -ts recent -c asterisk -i \
- | grep 'name=net'
-```
+patches/asterisk-22.10.1-stasis-taskpool.patch
 
-Expected:
+The installer applies this patch before compiling Asterisk.
 
-```text
-no output
-```
+The patch is specific to Asterisk 22.10.1.
 
-Important:
+30. STASIS.CONF
 
-The audit system may contain older AVC records.
+Configuration:
 
-Old records do not prove that a new restart failed.
+/etc/asterisk/stasis.conf
 
-Always test after the latest Asterisk restart.
+The baseline file may intentionally be empty.
 
----
+Purpose:
 
-# 25. Clean Startup Verification
+Suppress missing configuration messages
+31. OFFICIAL SAMPLE CONFIGURATIONS
 
-Restart:
+Required sample configuration files are retained.
 
-```bash
-systemctl restart asterisk
-sleep 3
-```
+Examples:
 
-Check:
+acl.conf
+ccss.conf
+cdr.conf
+cel.conf
+features.conf
+indications.conf
+manager.conf
+pjproject.conf
+udptl.conf
 
-```bash
-journalctl -u asterisk --since "10 seconds ago" --no-pager
-```
+Do not remove these files without validation.
 
-Check for startup errors/warnings:
+32. REPOSITORY CONFIGURATION FILES
 
-```bash
-journalctl -u asterisk --since "10 seconds ago" --no-pager \
- | grep -iE 'ERROR|WARNING|failed|Unable to load|Asterisk Ready' || true
-```
+Configuration templates:
 
-Expected:
+configs/asterisk/
 
-```text
-Asterisk Ready.
-```
+Current files:
 
-and no:
+acl.conf
+asterisk.conf
+ccss.conf
+cdr.conf
+cel.conf
+extensions.conf
+features.conf
+indications.conf
+logger.conf
+manager.conf
+modules.conf
+pjproject.conf
+pjsip.conf
+stasis.conf
+udptl.conf
+33. CONFIGURATION SOURCE OF TRUTH
 
-```text
-ERROR
-WARNING
-failed
-Unable to load
-```
+Repository configuration is copied into:
 
----
+/etc/asterisk
 
-# 26. Complete Verification
+The Git repository defines the intended deployment baseline.
 
-Run:
+Manual server changes should be reviewed before becoming part of the official repository.
 
-```bash
-asterisk -rx "core show version"
+34. INSTALLER
 
-asterisk -rx "module show like pjsip"
+Primary installer:
 
-asterisk -rx "pjsip show transports"
-
-ss -lunp | grep ':5060'
-
-getenforce
-
-systemctl is-enabled asterisk
-
-systemctl is-active asterisk
-```
-
-Then:
-
-```bash
-journalctl -u asterisk --since "10 seconds ago" --no-pager \
- | grep -iE 'ERROR|WARNING|failed|Unable to load|Asterisk Ready' || true
-```
-
-Then:
-
-```bash
-ausearch -m AVC -ts recent -c asterisk -i \
- | grep 'name=net' || true
-```
-
-A successful deployment should result in:
-
-```text
-Asterisk 22.10.1
-PJSIP modules Running
-transport-udp 0.0.0.0:5060
-5060 listening
-Enforcing
-enabled
-active
-Asterisk Ready.
-No startup ERROR
-No startup WARNING
-No new Asterisk AVC
-```
-
----
-
-# 27. One-Command Installation
-
-The final target is:
-
-```bash
-git clone https://github.com/Omkar7039/asterisk-rhel-deployment.git
-cd asterisk-rhel-deployment
-sudo ./install.sh
-```
-
-For root:
-
-```bash
-git clone https://github.com/Omkar7039/asterisk-rhel-deployment.git
-cd asterisk-rhel-deployment
 ./install.sh
-```
 
-The installer should automatically:
+The installer is designed to complete the installation automatically after the administrator provides the required answers.
 
-```text
-detect RHEL
-detect RHEL major version
-check repositories
-install dependencies
-download Asterisk 22.10.1
-verify source
-apply the Stasis patch
-compile Asterisk
-install Asterisk
-install configuration
-install systemd
-install SELinux policy
-restore SELinux contexts
-enable Asterisk
-start Asterisk
-run verification
-report PASS/FAIL
-```
+35. INTERACTIVE INSTALLATION
 
----
+The administrator runs only:
 
-# 28. RHEL Version Detection
-
-The installer can detect the major version with:
-
-```bash
-rpm -E %{rhel}
-```
-
-Expected:
-
-```text
-8
-```
-
-or:
-
-```text
-9
-```
-
-Use separate package logic:
-
-```text
-packages/rhel8.sh
-packages/rhel9.sh
-```
-
-Do not assume the dependency package names are identical on all RHEL releases.
-
----
-
-# 29. Repository Availability
-
-The installer must verify that repositories are usable before attempting the build.
-
-Example test:
-
-```bash
-dnf repolist
-```
-
-If package repositories are unavailable, the installer should stop with a clear error.
-
-The project must not silently continue with missing build dependencies.
-
----
-
-# 30. Configuration Safety
-
-Never commit:
-
-```text
-passwords
-SIP credentials
-API keys
-tokens
-private keys
-TLS private keys
-customer credentials
-machine-id
-SSH host keys
-```
-
-Search before committing:
-
-```bash
-grep -RniE \
-'password|secret|token|api[_-]?key|private[_-]?key|BEGIN .* PRIVATE KEY' \
-. \
-2>/dev/null || true
-```
-
-Review the output manually.
-
-Comments containing example words such as `password = mysecret` are not credentials, but real credentials must never be committed.
-
----
-
-# 31. Files That Must Not Be in GitHub
-
-Do not commit:
-
-```text
-/var/log/asterisk/*
-/var/run/asterisk/*
-/var/lib/asterisk/astdb.sqlite3
-/var/spool/asterisk/outgoing/*
-/etc/machine-id
-/etc/ssh/ssh_host_*
-*.ova
-*.vmdk
-*.iso
-*.tar.gz
-compiled binaries
-temporary build files
-private keys
-customer secrets
-```
-
-Git ignores these through `.gitignore` where appropriate.
-
----
-
-# 32. Customization
-
-The Master provides only a clean baseline.
-
-After deployment/clone, add:
-
-```text
-SIP endpoints
-SIP authentication
-trunks
-dialplan
-extensions
-NAT
-TLS
-customer settings
-CDR integrations
-monitoring
-firewall requirements
-external systems
-```
-
-Do not put customer-specific credentials into the Master baseline.
-
----
-
-# 33. Clone Customization Model
-
-Recommended flow:
-
-```text
-Master OVA
-    |
-    v
-Clone VM
-    |
-    +---- new machine identity
-    +---- new SSH host keys
-    +---- new VM network identity
-    |
-    v
-Customize Asterisk
-    |
-    v
-Test
-    |
-    v
-Deploy
-```
-
-The Master should remain unchanged.
-
----
-
-# 34. Machine Identity
-
-A Master OVA must not be distributed with the same machine identity.
-
-Before final OVA export:
-
-```bash
-rm -f /etc/machine-id
-rm -f /var/lib/dbus/machine-id
-touch /etc/machine-id
-```
-
-Do not permanently hard-code the Master machine ID into deployment files.
-
-After the clone boots, verify:
-
-```bash
-cat /etc/machine-id
-```
-
-The clone should have its own machine identity.
-
----
-
-# 35. SSH Host Keys
-
-Before exporting the Master OVA:
-
-```bash
-rm -f /etc/ssh/ssh_host_*
-```
-
-The cloned machine should generate its own SSH host keys during boot.
-
-Never commit SSH host keys to GitHub.
-
----
-
-# 36. Asterisk Runtime Cleanup
-
-Before final OVA export:
-
-```bash
-systemctl stop asterisk
-```
-
-Remove runtime logs:
-
-```bash
-rm -f /var/log/asterisk/*
-```
-
-Remove outgoing runtime files:
-
-```bash
-rm -f /var/spool/asterisk/outgoing/*
-```
-
-Reset the Asterisk database if the Master is intended to be a clean template:
-
-```bash
-rm -f /var/lib/asterisk/astdb.sqlite3
-```
-
-Restore contexts:
-
-```bash
-restorecon -RFv /var/lib/asterisk
-restorecon -RFv /var/log/asterisk
-restorecon -RFv /var/spool/asterisk
-```
-
----
-
-# 37. System Journal Cleanup
-
-Rotate:
-
-```bash
-journalctl --rotate
-```
-
-Vacuum:
-
-```bash
-journalctl --vacuum-time=1s
-```
-
-This prevents the Master OVA from carrying unnecessary historical logs.
-
----
-
-# 38. Shell History Cleanup
-
-Before export:
-
-```bash
-rm -f /root/.bash_history
-history -c
-```
-
-Do not store secrets in shell history.
-
----
-
-# 39. Final OVA Shutdown
-
-After cleanup:
-
-```bash
-sync
-shutdown -h now
-```
-
-Do not make more changes after the final shutdown.
-
----
-
-# 40. OVA Export
-
-In VMware Workstation:
-
-```text
-Power off VM
-   ↓
-Select VM
-   ↓
-Manage
-   ↓
-Export
-   ↓
-OVA
-```
-
-The resulting OVA is the deployment template.
-
----
-
-# 41. OVA Clone Test
-
-Do not immediately consider the OVA production-ready.
-
-Deploy one test clone.
-
-After boot:
-
-```bash
-hostnamectl
-cat /etc/machine-id
-systemctl is-enabled asterisk
-systemctl is-active asterisk
-```
-
-Then:
-
-```bash
-asterisk -rx "core show version"
-asterisk -rx "pjsip show transports"
-ss -lunp | grep ':5060'
-getenforce
-```
-
-Then:
-
-```bash
-journalctl -u asterisk -b --no-pager \
- | grep -iE 'ERROR|WARNING|failed|Unable to load|Asterisk Ready' || true
-```
-
-Then:
-
-```bash
-ausearch -m AVC -ts recent -c asterisk -i \
- | grep 'name=net' || true
-```
-
-Only after this test passes should the OVA be considered a validated deployment template.
-
----
-
-# 42. Git Versioning
-
-Repository release:
-
-```text
-v1.0.0
-```
-
-Create tag:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-Check:
-
-```bash
-git tag
-```
-
-Future releases:
-
-```text
-v1.1.0
-v1.2.0
-v2.0.0
-```
-
-Do not silently replace a known-good Asterisk version.
-
----
-
-# 43. Reproducible Deployment
-
-To reproduce the known release:
-
-```bash
-git clone https://github.com/Omkar7039/asterisk-rhel-deployment.git
-cd asterisk-rhel-deployment
-git checkout v1.0.0
 ./install.sh
-```
 
-This ensures the exact repository release is used.
-
-Do not use an untested `main` branch for production deployments if a tagged version is available.
-
----
-
-# 44. Update Workflow
-
-When changing the project:
-
-```bash
-git status
-```
-
-Review changes:
-
-```bash
-git diff
-```
-
-Stage:
-
-```bash
-git add .
-```
-
-Review staged changes:
-
-```bash
-git diff --cached
-```
-
-Commit:
-
-```bash
-git commit -m "Describe the change"
-```
-
-Push:
-
-```bash
-git push
-```
-
----
-
-# 45. Pulling Updates
-
-For a development machine:
-
-```bash
-git pull --ff-only
-```
-
-Check:
-
-```bash
-git status
-```
-
-For production, prefer a tested tag:
-
-```bash
-git fetch --tags
-git checkout v1.0.0
-```
-
----
-
-# 46. Upgrade Strategy
-
-Do not automatically upgrade Asterisk just because a newer version exists.
-
-Upgrade process:
-
-```text
-Current known-good version
-        |
-        v
-Create new branch
-        |
-        v
-Change Asterisk version
-        |
-        v
-Update source patch if required
-        |
-        v
-Build
-        |
-        v
-Fresh RHEL 9 test
-        |
-        v
-Fresh RHEL 8 test
-        |
-        v
-Functional test
-        |
-        v
-SELinux test
-        |
-        v
-OVA clone test
-        |
-        v
-New release tag
-```
+The installer asks a small number of questions.
 
 Example:
 
-```text
-v1.0.0 → Asterisk 22.10.1
-v2.0.0 → future tested Asterisk release
-```
+========================================
+ Asterisk RHEL Deployment
+========================================
 
-Keep the old version available.
+RHEL detected: 9
 
----
+Asterisk version [22.10.1]:
+PJSIP bind address [0.0.0.0]:
+PJSIP UDP port [5060]:
 
-# 47. Future Features
+Install SELinux policy? [Y/n]:
+Install systemd service? [Y/n]:
+Start Asterisk after installation? [Y/n]:
 
-The repository can later add:
+Proceed with installation? [Y/n]:
 
-```text
-Endpoint templates
-SIP trunk templates
-TLS
-firewall configuration
-automatic certificate deployment
-CDR integrations
-monitoring
-health checks
-backup/restore
-database integrations
-HA configuration
-customer profiles
-multi-site deployment
-```
+Press:
 
-The base architecture should remain stable.
+ENTER
 
----
+to accept the default.
 
-# 48. Future Customization Profiles
+The installer performs the remaining installation automatically.
 
-Possible future structure:
+36. INSTALLER AUTOMATIC STEPS
 
-```text
-profiles/
-├── base/
-├── lab/
-├── production/
-├── customer-a/
-└── customer-b/
-```
+The installer performs:
 
-A profile can define:
+1. Check root privileges
+2. Detect RHEL version
+3. Validate operating system
+4. Ask required questions
+5. Validate repositories
+6. Install prerequisites
+7. Download Asterisk source
+8. Verify checksum
+9. Install build prerequisites
+10. Apply Stasis patch
+11. Configure Asterisk
+12. Compile Asterisk
+13. Install Asterisk
+14. Install configuration files
+15. Configure PJSIP
+16. Install SELinux policy
+17. Install systemd service
+18. Reload systemd
+19. Enable Asterisk
+20. Start Asterisk if selected
+21. Run validation
 
-```text
-endpoints
-trunks
-dialplan
-codecs
-TLS
-network settings
-monitoring
-```
+37. DEFAULT INSTALLATION
 
-The base remains unchanged.
+For default values:
 
----
+./install.sh --defaults
 
-# 49. Future Automated Verification
+Defaults:
 
-`verify.sh` should eventually return:
+Asterisk version : 22.10.1
+PJSIP bind      : 0.0.0.0
+PJSIP UDP port  : 5060
+SELinux policy  : yes
+systemd service : yes
+Start Asterisk  : yes
+38. VERIFICATION SCRIPT
 
-```text
-PASS
-```
+Run:
 
-only when all required tests succeed.
+./verify.sh
 
-Example checks:
+The verification script should validate:
 
-```text
-OS supported
-RHEL version supported
-Asterisk binary exists
-Asterisk version correct
-systemd service exists
-systemd enabled
-systemd active
-PJSIP loaded
-PJSIP transport exists
-UDP 5060 listening
-SELinux Enforcing
-required SELinux contexts correct
-SELinux module installed
-no new Asterisk AVC
-no startup ERROR
-no startup WARNING
-dialplan 600 exists
-Asterisk Ready
-```
+Operating system
+Asterisk version
+Asterisk binary
+systemd
+Asterisk service
+PJSIP
+SIP transport
+SIP port
+Loaded modules
+Configuration
+SELinux
+Startup errors
+39. ASTERISK CLI VALIDATION
 
-A failure should return a non-zero shell exit status.
+Enter CLI:
 
----
+asterisk -rvvv
 
-# 50. Troubleshooting
+Version:
 
-## Asterisk is not running
+core show version
 
-```bash
-systemctl status asterisk --no-pager -l
-```
+PJSIP transports:
+
+pjsip show transports
+
+Modules:
+
+module show
+40. SIP LISTENING PORT
 
 Check:
 
-```bash
-journalctl -u asterisk -b --no-pager
-```
+ss -lunp | grep ':5060'
 
----
+Expected baseline:
 
-## PJSIP is not loaded
+0.0.0.0:5060
+41. PJSIP TRANSPORT VALIDATION
 
-```bash
-asterisk -rx "module show like pjsip"
-```
+Run:
+
+asterisk -rx 'pjsip show transports'
+
+The baseline should contain:
+
+transport-udp
+42. DIALPLAN VALIDATION
+
+Run:
+
+asterisk -rx 'dialplan show default'
+
+The 600 extension should exist.
+
+43. ECHO CALL TEST
+
+Register a SIP client.
+
+Call:
+
+600
+
+Expected:
+
+Call answered
+Echo application
+Audio returned
+Hangup
+44. LOG VALIDATION
+
+Show logs:
+
+journalctl -u asterisk -b
+
+Search:
+
+journalctl -u asterisk -b | grep -iE 'ERROR|WARNING|failed|Asterisk Ready'
+
+Expected clean startup:
+
+Asterisk Ready.
+45. REBOOT VALIDATION
+
+Reboot:
+
+reboot
+
+After reboot:
+
+systemctl status asterisk
 
 Then:
 
-```bash
-cat /etc/asterisk/modules.conf
-```
+journalctl -u asterisk -b | grep -iE 'ERROR|WARNING|failed|Asterisk Ready'
 
----
+Asterisk should automatically start and become ready.
 
-## UDP 5060 is not listening
+46. FIREWALL CONSIDERATIONS
 
-```bash
-asterisk -rx "pjsip show transports"
+SIP baseline:
+
+UDP 5060
+
+RTP ports depend on final RTP configuration.
+
+Check firewall:
+
+firewall-cmd --list-all
+
+The final network design must allow the required SIP and RTP traffic.
+
+
+47. NETWORK VALIDATION
+
+Show addresses:
+
+ip addr
+
+Show routes:
+
+ip route
+
+Show listening sockets:
+
+ss -lntup
+
+Test gateway:
+
+ping <gateway>
+48. GIT REPOSITORY
+
+Repository:
+
+https://github.com/Omkar7039/asterisk-rhel-deployment.git
+
+The repository is private.
+
+GitHub should contain the complete deployment project.
+
+49. GIT WORKFLOW
+
+Recommended:
+
+Modify
+  |
+  v
+git status
+  |
+  v
+git diff
+  |
+  v
+git add
+  |
+  v
+git commit
+  |
+  v
+git push
+50. VERSION FILE
+
+Project version file:
+
+VERSION
+
+Example:
+
+1.0.0
+
+Future Git tags:
+
+v1.0.0
+v1.1.0
+v2.0.0
+
+A release should only be created after complete testing.
+
+51. RELEASE VALIDATION
+
+Before release, test:
+
+Fresh RHEL 9 installation
+Fresh RHEL 8 installation
+GitHub clone
+Interactive installer
+Default installer
+Verification script
+Reboot
+PJSIP
+Echo call
+SELinux
+Systemd
+
+Do not tag a release until the target environments are validated.
+
+52. GITHUB CLONE WORKFLOW
+
+Fresh server:
+
+git clone https://github.com/Omkar7039/asterisk-rhel-deployment.git
+
+Enter directory:
+
+cd asterisk-rhel-deployment
+
+Run installer:
+
+./install.sh
+
+Verify:
+
+./verify.sh
+
+The GitHub repository is the complete deployment source.
+
+53. REPOSITORY STRUCTURE
+
+Expected project structure:
+
+asterisk-rhel-deployment/
+├── README.md
+├── VERSION
+├── .gitignore
+├── install.sh
+├── verify.sh
+├── build.sh
+├── cleanup.sh
+├── configs/
+│   └── asterisk/
+├── patches/
+│   └── asterisk-22.10.1-stasis-taskpool.patch
+├── selinux/
+│   └── asterisk-local-net.te
+└── systemd/
+    └── asterisk.service
+54. FUTURE DEVELOPMENT
+
+Future improvements may include:
+
+RHEL 8 automation
+RHEL 9 automation
+Installation profiles
+Custom SIP templates
+Custom dialplans
+Additional endpoint templates
+Firewall automation
+RTP configuration
+Upgrade scripts
+Rollback support
+Expanded verification
+Release automation
+GitHub CI testing
+55. ADMINISTRATION GUIDELINES
+
+Always review the repository state before changing production configuration.
+
+Check:
+
+cd /opt/asterisk-rhel-deployment
+git status
+
+Review differences:
+
+git diff
+
+Keep production configuration aligned with the tested repository baseline.
+
+Do not manually delete Asterisk configuration files that are required by loaded modules.
+
+56. COMPLETE INSTALLATION COMMANDS
+56.1 Clone GitHub repository
+git clone https://github.com/Omkar7039/asterisk-rhel-deployment.git
+56.2 Enter project
+cd asterisk-rhel-deployment
+56.3 Interactive installation
+./install.sh
+
+The installer asks the administrator only the required questions.
+
+Press ENTER to accept defaults.
+
+56.4 Default installation
+./install.sh --defaults
+56.5 Verification
+./verify.sh
+56.6 Check version
+asterisk --version
+56.7 Check service
+systemctl status asterisk
+56.8 Start
+systemctl start asterisk
+56.9 Stop
+systemctl stop asterisk
+56.10 Restart
+systemctl restart asterisk
+56.11 Enable at boot
+systemctl enable asterisk
+56.12 Check enabled state
+systemctl is-enabled asterisk
+56.13 Check active state
+systemctl is-active asterisk
+56.14 Asterisk CLI
+asterisk -rvvv
+56.15 Show version
+core show version
+56.16 Show PJSIP transports
+pjsip show transports
+56.17 Show endpoints
+pjsip show endpoints
+56.18 Show registrations
+pjsip show registrations
+56.19 Show dialplan
+dialplan show default
+56.20 Show modules
+module show
+56.21 Check SIP port
 ss -lunp | grep ':5060'
-```
+56.22 Check Asterisk process
+ps -ef | grep '[a]sterisk'
+56.23 Check SELinux
+getenforce
+56.24 Check SELinux policy
+sesearch -A -s asterisk_t -t sysctl_net_t -c dir -p search
+56.25 Check AVC
+ausearch -m AVC -ts recent
+56.26 Check logs
+journalctl -u asterisk -b
+56.27 Follow logs
+journalctl -u asterisk -f
+56.28 Search startup errors
+journalctl -u asterisk -b | grep -iE 'ERROR|WARNING|failed|Asterisk Ready'
+56.29 Check network
+ip addr
+56.30 Check routes
+ip route
+56.31 Check sockets
+ss -lntup
+56.32 Check firewall
+firewall-cmd --list-all
+56.33 Check Asterisk configuration
+ls -lah /etc/asterisk
+56.34 Check modules directory
+ls -lah /usr/lib/asterisk/modules
+56.35 Check Asterisk directories
+ls -ld /var/lib/asterisk
+ls -ld /var/log/asterisk
+ls -ld /var/spool/asterisk
+ls -ld /var/run/asterisk
+56.36 Show systemd service
+systemctl cat asterisk
+56.37 Reload systemd
+systemctl daemon-reload
+56.38 Check core settings
+asterisk -rx 'core show settings'
+56.39 Check transports
+asterisk -rx 'pjsip show transports'
+56.40 Check dialplan
+asterisk -rx 'dialplan show default'
+56.41 Echo test
 
----
+Call:
 
-## SELinux denial
+600
+56.42 Reboot
+reboot
+56.43 Check after reboot
+systemctl status asterisk
+56.44 Check after reboot logs
+journalctl -u asterisk -b | grep -iE 'ERROR|WARNING|failed|Asterisk Ready'
+56.45 Git status
+cd /opt/asterisk-rhel-deployment
+git status
+56.46 Git diff
+git diff
+56.47 Add changes
+git add .
+56.48 Commit
+git commit -m "Update Asterisk deployment"
+56.49 Push
+git push
+56.50 Check remote
+git remote -v
+56.51 Show commits
+git log --oneline --decorate -10
+56.52 Enter source directory
+cd /usr/src/asterisk-22.10.1
+56.53 Configure source
+./configure
+56.54 Build
+make -j"$(nproc)"
+56.55 Install
+make install
+56.56 Final verification
+cd /opt/asterisk-rhel-deployment
+./verify.sh
 
-Check:
+Final expected baseline:
 
-```bash
-ausearch -m AVC -ts recent -c asterisk -i
-```
+Asterisk 22.10.1
+PJSIP transport available
+UDP 5060 listening
+systemd active
+SELinux Enforcing
+Echo extension 600 available
+Asterisk Ready.
+END
 
-Look specifically for:
+Recommended fresh-server workflow:
 
-```text
-name=net
-```
-
-Check installed policy:
-
-```bash
-semodule -l | grep -i asterisk
-```
-
-Check rule:
-
-```bash
-sesearch -A \
-  -s asterisk_t \
-  -t sysctl_net_t \
-  -c dir \
-  -p search
-```
-
-Do not disable SELinux just to hide the problem.
-
----
-
-## Asterisk reports configuration errors
-
-Check:
-
-```bash
-journalctl -u asterisk --since "10 seconds ago" --no-pager
-```
-
-Check:
-
-```bash
-ls -la /etc/asterisk
-```
-
-Never copy random configuration files from a different Asterisk version.
-
----
-
-# 51. Design Rules
-
-The project follows these principles:
-
-```text
-Minimal base
-Reproducible builds
-Version pinning
-SELinux enabled
-No secrets in GitHub
-No VM-specific identity in the Master
-No customer settings in the Master
-No untested upgrades
-Automatic verification
-```
-
----
-
-# 52. Golden Rule
-
-Do not modify the validated Master just because one customer requires something special.
-
-Use:
-
-```text
-Master
-   |
-   +---- Clone A → Customer A
-   |
-   +---- Clone B → Customer B
-   |
-   +---- Clone C → Lab
-```
-
-The Master remains the clean baseline.
-
----
-
-# 53. Final Deployment Model
-
-```text
-                         GitHub
-                           |
-             +-------------+-------------+
-             |                           |
-             v                           v
-        Fresh RHEL                    Master OVA
-             |                           |
-             v                           v
-        ./install.sh                  Clone
-             |                           |
-             v                           v
-      Asterisk 22.10.1             Customize
-             |                           |
-             +------------+--------------+
-                          |
-                          v
-                       Verify
-                          |
-                          v
-                       Deploy
-```
-
----
-
-# 54. Current Status
-
-Current validated baseline:
-
-```text
-RHEL 9.8                    PASS
-Asterisk 22.10.1            PASS
-PJSIP                       PASS
-UDP 5060                    PASS
-systemd                     PASS
-SELinux Enforcing           PASS
-SELinux AVC                 PASS
-Clean startup               PASS
-Asterisk Ready              PASS
-```
-
-Repository baseline:
-
-```text
-GitHub repository           PASS
-README                      PASS
-Asterisk configuration      PASS
-systemd service             PASS
-SELinux source              PASS
-Stasis patch                PASS
-```
-
-Automation:
-
-```text
-install.sh                  IN DEVELOPMENT
-build.sh                    IN DEVELOPMENT
-verify.sh                   IN DEVELOPMENT
-cleanup.sh                  IN DEVELOPMENT
-RHEL 9 fresh install test   REQUIRED
-RHEL 8 fresh install test   REQUIRED
-OVA clone test              REQUIRED
-v1.0.0 release              PENDING
-```
-
----
-
-# 55. Final Goal
-
-A new administrator should eventually be able to perform:
-
-```bash
 git clone https://github.com/Omkar7039/asterisk-rhel-deployment.git
 cd asterisk-rhel-deployment
-git checkout v1.0.0
 ./install.sh
-```
+./verify.sh
 
-and receive a fully configured, SELinux-enabled, systemd-managed Asterisk installation.
+For default installation:
 
-The same validated baseline should also be available as:
+./install.sh --defaults
 
-```text
-Master OVA
-    ↓
-Clone
-    ↓
-Customize
-    ↓
-Deploy
-```
-
-GitHub provides reproducibility.
-
-The OVA provides speed.
-
-The Master provides a clean baseline.
-
-The clone provides the customization target.
-
+The installer asks the administrator only the required interactive questions and performs the remaining installation automatically.
