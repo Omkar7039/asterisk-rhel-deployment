@@ -195,40 +195,37 @@ fi
 log "[1/10] Checking package repositories"
 dnf repolist >/dev/null || die "DNF repositories are not usable."
 
-log "[2/10] Installing base tools"
-dnf install -y \
-    curl \
-    wget \
-    git \
-    tar \
-    gzip \
-    patch \
-    make \
-    gcc \
-    gcc-c++ \
-    autoconf \
-    automake \
-    bison \
-    flex \
-    pkgconfig \
-    diffutils \
-    which \
-    findutils \
-    ncurses-devel \
-    openssl-devel \
-    libxml2-devel \
-    sqlite-devel \
-    libuuid-devel \
-    jansson-devel \
-    libedit-devel \
-    python3 \
-    python3-devel \
-    policycoreutils \
-    policycoreutils-python-utils \
-    checkpolicy \
-    policycoreutils-devel \
+log "[2/10] Installing all Asterisk dependencies"
+
+case "$RHEL_MAJOR" in
+    8)
+        PACKAGE_FILE="$REPO_DIR/packages/rhel8.sh"
+        ;;
+    9)
+        PACKAGE_FILE="$REPO_DIR/packages/rhel9.sh"
+        ;;
+    *)
+        die "Unsupported RHEL major version: $RHEL_MAJOR"
+        ;;
+esac
+
+[[ -f "$PACKAGE_FILE" ]] || die "Missing dependency bundle: $PACKAGE_FILE"
+
+# shellcheck disable=SC1090
+source "$PACKAGE_FILE"
+
+mkdir -p /tmp
+: >/tmp/asterisk-install-prereq.log
+
+dnf install -y "${ASTERISK_PACKAGES[@]}" \
     >/tmp/asterisk-install-prereq.log 2>&1 \
-    || die "Base dependency installation failed. See /tmp/asterisk-install-prereq.log"
+    || die "Dependency installation failed. See /tmp/asterisk-install-prereq.log"
+
+command -v curl >/dev/null 2>&1 || die "curl was not installed successfully."
+command -v tar >/dev/null 2>&1 || die "tar was not installed successfully."
+command -v patch >/dev/null 2>&1 || die "patch was not installed successfully."
+command -v make >/dev/null 2>&1 || die "make was not installed successfully."
+command -v gcc >/dev/null 2>&1 || die "gcc was not installed successfully."
 
 log "[3/10] Downloading Asterisk $ASTERISK_VERSION"
 
