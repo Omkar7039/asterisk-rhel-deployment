@@ -27,7 +27,6 @@ ASTERISK_PACKAGES=(
     libxml2-devel
     sqlite-devel
     libuuid-devel
-    jansson-devel
     libedit-devel
 
     # Python
