@@ -7,7 +7,7 @@ ASTERISK_VERSION_DEFAULT="22.10.1"
 SIP_BIND_DEFAULT="0.0.0.0"
 SIP_PORT_DEFAULT="5060"
 
-SOURCE_BASE_URL="https://downloads.asterisk.org/pub/telephony/asterisk"
+SOURCE_BASE_URL="https://downloads.asterisk.org/pub/telephony/asterisk/releases"
 
 AST_SRC_DIR="/usr/src/asterisk"
 AST_INSTALL_USER="root"
@@ -318,7 +318,7 @@ mkdir -p \
     /var/run/asterisk
 
 if [[ -f "$ASTERISK_ETC/pjsip.conf" ]]; then
-    BACKUP_DIR="/etc/asterisk/backup-$(date +%Y%m%d-%H%M%S)"
+    BACKUP_DIR="/var/backups/asterisk/backup-$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$BACKUP_DIR"
     cp -a "$ASTERISK_ETC/." "$BACKUP_DIR/"
     log "Existing Asterisk configuration backed up to $BACKUP_DIR"
