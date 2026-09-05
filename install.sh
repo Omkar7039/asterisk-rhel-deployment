@@ -282,7 +282,7 @@ fi
 
 log "[7/10] Configuring Asterisk"
 
-./configure \
+./configure --with-jansson-bundled \
     || die "Asterisk configure failed."
 
 log "[8/10] Building Asterisk"
