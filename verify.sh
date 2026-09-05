@@ -36,7 +36,7 @@ else
     fail_check "Asterisk service active"
 fi
 
-if asterisk -rx "module show like pjsip" 2>/dev/null \
+if asterisk -rx "module show like chan_pjsip" 2>/dev/null \
     | grep -q 'chan_pjsip.so'; then
     pass "PJSIP channel driver"
 else
