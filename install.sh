@@ -38,9 +38,7 @@ die() {
 }
 
 cleanup() {
-    rm -f /tmp/asterisk-install-prereq.log \
-          /tmp/asterisk-install-build.log \
-          /tmp/asterisk-install-test.log
+    :
 }
 trap cleanup EXIT
 
